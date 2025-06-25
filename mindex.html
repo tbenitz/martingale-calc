@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Martingale Sequence Calculator</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 2em auto; padding: 1em; }
+    .checkbox-group { margin-bottom: 1em; }
+    .checkbox-group label { margin-right: 1em; }
+    .field-group { margin-top: 1em; }
+    label { display: inline-block; width: 200px; font-weight: bold; }
+    input[type="number"] { width: 140px; padding: 0.5em; box-sizing: border-box; }
+    button { display: block; margin-top: 1.5em; padding: 0.7em 1.5em; font-size: 1em; }
+    .result { margin-top: 2em; }
+    .info { font-size: 1.1em; margin-bottom: 0.5em; }
+    .increasePct { font-size: 1.2em; color: red; font-weight: bold; margin-bottom: 0.5em; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1em; }
+    th, td { border: 1px solid #ccc; padding: 0.5em; text-align: right; }
+    th { background: #f0f0f0; }
+  </style>
+</head>
+<body>
+  <h1>Martingale Sequence Calculator</h1>
+
+  <div class="checkbox-group">
+    <label><input type="checkbox" id="useMultiplier"> Use Payout Multiplier</label>
+    <label><input type="checkbox" id="useIncrease"> Use Increase %</label>
+    <p>Select one to auto-calculate the other; if neither or both are checked, custom values are used (blank increase = 0%).</p>
+  </div>
+
+  <div class="field-group">
+    <label for="baseBet">Base Bet ($):</label>
+    <input type="number" id="baseBet" step="0.01" value="1">
+  </div>
+  <div class="field-group">
+    <label for="payoutMultiplier">Payout Multiplier:</label>
+    <input type="number" id="payoutMultiplier" step="0.01" value="3.34">
+  </div>
+  <div class="field-group">
+    <label for="increasePct">Bet Increase Percentage (%):</label>
+    <input type="number" id="increasePct" step="0.01" placeholder="Optional">
+  </div>
+  <div class="field-group">
+    <label for="stopLoss">Stop Loss ($):</label>
+    <input type="number" id="stopLoss" step="0.01" placeholder="Optional">
+  </div>
+  <div class="field-group">
+    <label for="steps">Number of Steps:</label>
+    <input type="number" id="steps" step="1" value="50">
+  </div>
+
+  <button id="calculate">Generate Sequence</button>
+  <div class="result" id="result"></div>
+
+  <script>
+    const useMultChk = document.getElementById('useMultiplier');
+    const useIncChk = document.getElementById('useIncrease');
+    const payoutInput = document.getElementById('payoutMultiplier');
+    const increaseInputEl = document.getElementById('increasePct');
+    const stopLossInput = document.getElementById('stopLoss');
+
+    // Uncheck on custom input
+    payoutInput.addEventListener('input', () => { useMultChk.checked = false; useIncChk.checked = false; });
+    increaseInputEl.addEventListener('input', () => { useMultChk.checked = false; useIncChk.checked = false; });
+
+    function computeMinIncrease(base, multiplier, steps) {
+      for (let trialPct = 0; trialPct <= 1000; trialPct += 0.1) {
+        const inc = trialPct / 100;
+        let bets = [base]; let cum = base;
+        for (let i = 1; i < steps; i++) { bets.push(bets[i-1] * (1 + inc)); cum += bets[i]; }
+        let cumulative = 0;
+        const valid = bets.every(bet => { cumulative += bet; return (bet * multiplier) - cumulative >= 0; });
+        if (valid) return trialPct;
+      }
+      return null;
+    }
+
+    document.getElementById('calculate').addEventListener('click', function() {
+      const base = parseFloat(document.getElementById('baseBet').value);
+      let multiplier = parseFloat(payoutInput.value);
+      const incInput = parseFloat(increaseInputEl.value);
+      const steps = parseInt(document.getElementById('steps').value, 10);
+      const useMult = useMultChk.checked;
+      const useInc = useIncChk.checked;
+      const stopLoss = parseFloat(stopLossInput.value);
+      const resultEl = document.getElementById('result');
+
+      if (isNaN(base) || base <= 0 || isNaN(steps) || steps < 1) {
+        resultEl.textContent = 'Enter valid Base Bet and Number of Steps.'; return;
+      }
+      if (useMult && !useInc && (isNaN(multiplier) || multiplier <= 1)) {
+        resultEl.textContent = 'Enter a valid Payout Multiplier (>1).'; return;
+      }
+
+      let increasePct;
+      if (useMult && !useInc) {
+        increasePct = (1 / multiplier) * 100;
+        increaseInputEl.value = increasePct.toFixed(2);
+      } else if (useInc && !useMult) {
+        increasePct = isNaN(incInput)?0:incInput;
+        multiplier = 100 / increasePct;
+        payoutInput.value = multiplier.toFixed(2);
+      } else {
+        increasePct = isNaN(incInput)?0:incInput;
+        if (increasePct === 0) {
+          increasePct = (1 / multiplier) * 100;
+          increaseInputEl.value = increasePct.toFixed(2);
+        }
+      }
+
+      // Compute stop-loss step and probability
+      let stopStep = null, cumLoss = 0;
+      for (let i = 0; i < steps; i++) {
+        const bet = (i === 0) ? base : base * Math.pow(1 + increasePct/100, i);
+        cumLoss += bet;
+        if (!isNaN(stopLoss) && stopLoss > 0 && cumLoss > stopLoss) { stopStep = i+1; break; }
+      }
+      const loseProb = (multiplier>1) ? ((multiplier - 1)/multiplier) : 1;
+
+      // Minimum increase
+      const minIncrease = computeMinIncrease(base, multiplier, steps);
+      let html = '';
+      if (minIncrease !== null) html += `<p class="info">Minimum Increase without negatives: ${minIncrease.toFixed(2)}%</p>`;
+      else html += `<p class="info">No increase up to 1000% prevents negatives.</p>`;
+      if (stopStep !== null) {
+        const prob = Math.pow(loseProb, stopStep);
+        html += `<p class="info">Stop-loss hit at step ${stopStep} (lose ${stopStep} in a row ~${(prob*100).toFixed(2)}% chance).</p>`;
+      }
+      html += `<p class="increasePct">Using Increase: ${increasePct.toFixed(2)}%</p>`;
+
+      // Generate sequence
+      const increment = 1 + (increasePct / 100);
+      const bets = [base]; for (let i = 1; i < steps; i++) bets.push(bets[i-1]*increment);
+
+      const baseProfit = base*(multiplier-1);
+      let cum = 0;
+      html += '<table><tr><th>Step</th><th>Bet ($)</th><th>Cumulative ($)</th><th>Return vs Base (×)</th><th>Net Win ($)</th></tr>';
+      bets.forEach((bet, idx) => { cum += bet; const ret=bet/base; const net=(bet*multiplier)-cum;
+        html += `<tr><td>${idx+1}</td><td>${bet.toFixed(2)}</td><td>${cum.toFixed(2)}</td><td>${ret.toFixed(2)}</td><td>${net.toFixed(2)}</td></tr>`;
+      });
+      html += '</table>';
+
+      resultEl.innerHTML = html;
+    });
+  </script>
+</body>
+</html>
