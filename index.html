@@ -2,146 +2,158 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Martingale Sequence Calculator</title>
+  <title>Martingale Calculator</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 800px; margin: 2em auto; padding: 1em; }
-    .checkbox-group { margin-bottom: 1em; }
-    .checkbox-group label { margin-right: 1em; }
-    .field-group { margin-top: 1em; }
-    label { display: inline-block; width: 200px; font-weight: bold; }
-    input[type="number"] { width: 140px; padding: 0.5em; box-sizing: border-box; }
-    button { display: block; margin-top: 1.5em; padding: 0.7em 1.5em; font-size: 1em; }
-    .result { margin-top: 2em; }
-    .info { font-size: 1.1em; margin-bottom: 0.5em; }
-    .increasePct { font-size: 1.2em; color: red; font-weight: bold; margin-bottom: 0.5em; }
-    table { width: 100%; border-collapse: collapse; margin-top: 1em; }
-    th, td { border: 1px solid #ccc; padding: 0.5em; text-align: right; }
-    th { background: #f0f0f0; }
+    body { font-family: sans-serif; max-width: 800px; margin: 2em auto; padding: 0 1em; }
+    h1, h2 { text-align: center; }
+    label { display: block; margin: 0.75em 0 0.25em; }
+    input[type="number"], button { width: 100%; padding: 0.5em; font-size: 1em; }
+    button { margin-top: 1em; cursor: pointer; }
+    .result { margin: 0.5em 0; }
+    .inline { display: inline-block; margin-right: 1em; }
   </style>
 </head>
 <body>
-  <h1>Martingale Sequence Calculator</h1>
+  <h1>Martingale Calculator</h1>
 
-  <div class="checkbox-group">
-    <label><input type="checkbox" id="useMultiplier"> Use Payout Multiplier</label>
-    <label><input type="checkbox" id="useIncrease"> Use Increase %</label>
-    <p>Select one to auto-calculate the other; if neither or both are checked, custom values are used (blank increase = 0%).</p>
-  </div>
+  <!-- Inputs -->
+  <label>Base Bet ($):
+    <input type="number" id="baseBet" value="1.00" step="0.01" min="0">
+  </label>
 
-  <div class="field-group">
-    <label for="baseBet">Base Bet ($):</label>
-    <input type="number" id="baseBet" step="0.01" value="1">
-  </div>
-  <div class="field-group">
-    <label for="payoutMultiplier">Payout Multiplier:</label>
-    <input type="number" id="payoutMultiplier" step="0.01" value="3.34">
-  </div>
-  <div class="field-group">
-    <label for="increasePct">Bet Increase Percentage (%):</label>
-    <input type="number" id="increasePct" step="0.01" placeholder="Optional">
-  </div>
-  <div class="field-group">
-    <label for="stopLoss">Stop Loss ($):</label>
-    <input type="number" id="stopLoss" step="0.01" placeholder="Optional">
-  </div>
-  <div class="field-group">
-    <label for="steps">Number of Steps:</label>
-    <input type="number" id="steps" step="1" value="50">
-  </div>
+  <label>Bet Increase After Loss (%):
+    <input type="number" id="betIncreasePercent" value="100" step="0.01" min="0">
+  </label>
 
-  <button id="calculate">Generate Sequence</button>
-  <div class="result" id="result"></div>
+  <label>Stop Loss Limit ($):
+    <input type="number" id="stopLossLimit" value="500" step="0.01" min="0">
+  </label>
+
+  <label>Target Earnings in 1 Hour ($):
+    <input type="number" id="targetEarnings" value="100" step="0.01">
+  </label>
+
+  <label>Bets per Minute:
+    <input type="number" id="betsPerMinute" value="90" step="1" min="1">
+  </label>
+
+  <label>Observed Wins Count:
+    <input type="number" id="observedWins" value="3182" step="1" min="0">
+  </label>
+
+  <label>Observed Losses Count:
+    <input type="number" id="observedLosses" value="789" step="1" min="0">
+  </label>
+
+  <!-- New field -->
+  <label>Spins per Minute:
+    <input type="number" id="spinsPerMinute" value="90" step="1" min="1">
+  </label>
+
+  <button id="calculateBtn">Calculate</button>
+
+  <!-- Results -->
+  <h2>Results</h2>
+  <div class="result">
+    <span class="inline"><strong>Expected Hourly Profit:</strong> $<span id="expectedProfit">–</span></span>
+  </div>
+  <div class="result">
+    <span class="inline"><strong>Chance of Hitting Stop-Loss in 1 hr:</strong> <span id="stopLossChance">–</span></span>
+    (<em>1 in <span id="stopLossOneInX">–</span></em>)
+  </div>
+  <div class="result">
+    <span class="inline"><strong>Chance of Earning ≥ $<span id="targetEarningsDisplay">–</span> in 1 hr:</strong> <span id="chanceEarnings">–</span></span>
+  </div>
+  <div class="result">
+    <span class="inline"><strong>Median Time to Stop-Loss:</strong> <span id="stopLossMedianTime">–</span> minutes</span>
+  </div>
 
   <script>
-    const useMultChk = document.getElementById('useMultiplier');
-    const useIncChk = document.getElementById('useIncrease');
-    const payoutInput = document.getElementById('payoutMultiplier');
-    const increaseInputEl = document.getElementById('increasePct');
-    const stopLossInput = document.getElementById('stopLoss');
-
-    // Uncheck on custom input
-    payoutInput.addEventListener('input', () => { useMultChk.checked = false; useIncChk.checked = false; });
-    increaseInputEl.addEventListener('input', () => { useMultChk.checked = false; useIncChk.checked = false; });
-
-    function computeMinIncrease(base, multiplier, steps) {
-      for (let trialPct = 0; trialPct <= 1000; trialPct += 0.1) {
-        const inc = trialPct / 100;
-        let bets = [base]; let cum = base;
-        for (let i = 1; i < steps; i++) { bets.push(bets[i-1] * (1 + inc)); cum += bets[i]; }
-        let cumulative = 0;
-        const valid = bets.every(bet => { cumulative += bet; return (bet * multiplier) - cumulative >= 0; });
-        if (valid) return trialPct;
-      }
-      return null;
+    // 1) Win probability from observed counts
+    function calculateWinProb() {
+      const wins = +document.getElementById('observedWins').value || 0;
+      const losses = +document.getElementById('observedLosses').value || 0;
+      const total = wins + losses;
+      return total > 0 ? wins / total : 0;
     }
 
-    document.getElementById('calculate').addEventListener('click', function() {
-      const base = parseFloat(document.getElementById('baseBet').value);
-      let multiplier = parseFloat(payoutInput.value);
-      const incInput = parseFloat(increaseInputEl.value);
-      const steps = parseInt(document.getElementById('steps').value, 10);
-      const useMult = useMultChk.checked;
-      const useInc = useIncChk.checked;
-      const stopLoss = parseFloat(stopLossInput.value);
-      const resultEl = document.getElementById('result');
-
-      if (isNaN(base) || base <= 0 || isNaN(steps) || steps < 1) {
-        resultEl.textContent = 'Enter valid Base Bet and Number of Steps.'; return;
+    // 2) How many consecutive losses until cumulative bets exceed stop-loss
+    function calculateStopLossSteps(baseBet, increasePct, stopLimit) {
+      let step = 0, cum = 0, bet = baseBet;
+      const factor = 1 + increasePct / 100;
+      while (cum + bet <= stopLimit) {
+        cum += bet;
+        bet *= factor;
+        step++;
+        if (step > 10000) break;  // safety
       }
-      if (useMult && !useInc && (isNaN(multiplier) || multiplier <= 1)) {
-        resultEl.textContent = 'Enter a valid Payout Multiplier (>1).'; return;
-      }
+      return step;
+    }
 
-      let increasePct;
-      if (useMult && !useInc) {
-        increasePct = (1 / multiplier) * 100;
-        increaseInputEl.value = increasePct.toFixed(2);
-      } else if (useInc && !useMult) {
-        increasePct = isNaN(incInput)?0:incInput;
-        multiplier = 100 / increasePct;
-        payoutInput.value = multiplier.toFixed(2);
-      } else {
-        increasePct = isNaN(incInput)?0:incInput;
-        if (increasePct === 0) {
-          increasePct = (1 / multiplier) * 100;
-          increaseInputEl.value = increasePct.toFixed(2);
-        }
-      }
+    // 3) Probability of a pure-loss sequence of length N
+    function lossSeqProb(winProb, steps) {
+      return Math.pow(1 - winProb, steps);
+    }
 
-      // Compute stop-loss step and probability
-      let stopStep = null, cumLoss = 0;
-      for (let i = 0; i < steps; i++) {
-        const bet = (i === 0) ? base : base * Math.pow(1 + increasePct/100, i);
-        cumLoss += bet;
-        if (!isNaN(stopLoss) && stopLoss > 0 && cumLoss > stopLoss) { stopStep = i+1; break; }
-      }
-      const loseProb = (multiplier>1) ? ((multiplier - 1)/multiplier) : 1;
+    // 4) Probability to hit that sequence at least once in one hour
+    function probHitStopLoss(winProb, steps, betsPerMin) {
+      const pSeq = lossSeqProb(winProb, steps);
+      const betsPerHour = betsPerMin * 60;
+      return 1 - Math.pow(1 - pSeq, betsPerHour);
+    }
 
-      // Minimum increase
-      const minIncrease = computeMinIncrease(base, multiplier, steps);
-      let html = '';
-      if (minIncrease !== null) html += `<p class="info">Minimum Increase without negatives: ${minIncrease.toFixed(2)}%</p>`;
-      else html += `<p class="info">No increase up to 1000% prevents negatives.</p>`;
-      if (stopStep !== null) {
-        const prob = Math.pow(loseProb, stopStep);
-        html += `<p class="info">Stop-loss hit at step ${stopStep} (lose ${stopStep} in a row ~${(prob*100).toFixed(2)}% chance).</p>`;
-      }
-      html += `<p class="increasePct">Using Increase: ${increasePct.toFixed(2)}%</p>`;
+    // 5) Expected hourly profit (approximate via profit-per-win × wins-per-hour)
+    function expectedProfitHourly(winProb, baseBet, increasePct, betsPerMin) {
+      const factor = 1 + increasePct / 100;       // e.g. 100% → 2× payout
+      const profitPerWin = baseBet * (factor - 1);
+      const betsPerHour = betsPerMin * 60;
+      return profitPerWin * betsPerHour * winProb;
+    }
 
-      // Generate sequence
-      const increment = 1 + (increasePct / 100);
-      const bets = [base]; for (let i = 1; i < steps; i++) bets.push(bets[i-1]*increment);
+    // 6) Chance to earn target = at least one win in hour (or 100% if target ≤ 0)
+    function probEarnTarget(winProb, betsPerMin, target) {
+      if (target <= 0) return 1;
+      const betsPerHour = betsPerMin * 60;
+      return 1 - Math.pow(1 - winProb, betsPerHour);
+    }
 
-      const baseProfit = base*(multiplier-1);
-      let cum = 0;
-      html += '<table><tr><th>Step</th><th>Bet ($)</th><th>Cumulative ($)</th><th>Return vs Base (×)</th><th>Net Win ($)</th></tr>';
-      bets.forEach((bet, idx) => { cum += bet; const ret=bet/base; const net=(bet*multiplier)-cum;
-        html += `<tr><td>${idx+1}</td><td>${bet.toFixed(2)}</td><td>${cum.toFixed(2)}</td><td>${ret.toFixed(2)}</td><td>${net.toFixed(2)}</td></tr>`;
-      });
-      html += '</table>';
+    // 7) Median number of rounds before hitting stop-loss sequence
+    function medianRoundsBeforeStopLoss(winProb, steps) {
+      const pSeq = lossSeqProb(winProb, steps);
+      return Math.log(0.5) / Math.log(1 - pSeq);
+    }
 
-      resultEl.innerHTML = html;
+    document.getElementById('calculateBtn').addEventListener('click', () => {
+      // Gather inputs
+      const baseBet       = +document.getElementById('baseBet').value;
+      const increasePct   = +document.getElementById('betIncreasePercent').value;
+      const stopLimit     = +document.getElementById('stopLossLimit').value;
+      const targetEarnings= +document.getElementById('targetEarnings').value;
+      const betsPerMin    = +document.getElementById('betsPerMinute').value;
+      const spinsPerMin   = +document.getElementById('spinsPerMinute').value;
+      const winProb       = calculateWinProb();
+
+      // Steps to stop-loss
+      const steps = calculateStopLossSteps(baseBet, increasePct, stopLimit);
+
+      // 1. Expected Profit
+      const expProfit = expectedProfitHourly(winProb, baseBet, increasePct, betsPerMin);
+      document.getElementById('expectedProfit').textContent = expProfit.toFixed(2);
+
+      // 2. Stop-Loss Chance
+      const pHit = probHitStopLoss(winProb, steps, betsPerMin);
+      document.getElementById('stopLossChance').textContent = (pHit * 100).toFixed(2) + '%';
+      document.getElementById('stopLossOneInX').textContent = pHit > 0 ? (1 / pHit).toFixed(0) : '∞';
+
+      // 3. Chance to hit target
+      document.getElementById('targetEarningsDisplay').textContent = targetEarnings.toFixed(2);
+      const pEarn = probEarnTarget(winProb, betsPerMin, targetEarnings);
+      document.getElementById('chanceEarnings').textContent = (pEarn * 100).toFixed(2) + '%';
+
+      // 4. Median time to stop-loss
+      const roundsMed = medianRoundsBeforeStopLoss(winProb, steps);
+      const minutesMed = spinsPerMin > 0 ? (roundsMed / spinsPerMin) : 0;
+      document.getElementById('stopLossMedianTime').textContent = minutesMed.toFixed(2);
     });
   </script>
 </body>
