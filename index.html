@@ -5,168 +5,146 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Martingale Sequence Calculator</title>
   <style>
-    /* Color Variables */
     :root {
-      --color-blue: #0a3d62;
-      --color-red: #c0392b;
-      --color-yellow: #f1c40f;
-      --color-white: #ffffff;
-      --color-gray-light: #f4f4f4;
-      --color-gray-dark: #2c3e50;
+      --bg-light: #f5f5f5;
+      --bg-dark: #121212;
+      --text-light: #121212;
+      --text-dark: #f5f5f5;
+      --primary: #008080;
+      --secondary: #FF6F61;
+      --border: #cccccc;
+      --header-dark: #004c4c;
+      --header-light: #ff6f61;
     }
-    body {
-      font-family: 'Segoe UI', Tahoma, sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: var(--color-gray-dark);
-      color: var(--color-white);
-      transition: background-color 0.3s, color 0.3s;
-    }
-    .light-mode body {
-      background-color: var(--color-gray-light);
-      color: var(--color-gray-dark);
-    }
-    .container {
-      max-width: 900px;
-      margin: 2em auto;
-      padding: 1em;
-    }
-    h1 {
-      text-align: center;
-      color: var(--color-yellow);
-      margin-bottom: 1em;
-    }
-    label { display: block; margin: 0.75em 0 0.25em; }
-    input, button {
-      width: 100%; padding: 0.5em; font-size: 1em; margin-bottom: 0.5em;
-      border: 2px solid var(--color-yellow); border-radius: 4px;
-      background-color: transparent; color: inherit;
-      transition: background-color 0.3s, color 0.3s;
-    }
-    .light-mode input, .light-mode button {
-      background-color: var(--color-white); color: var(--color-gray-dark);
-    }
-    button {
-      cursor: pointer; font-weight: bold;
-      background-color: var(--color-red); color: var(--color-white);
-    }
-    .light-mode button {
-      background-color: var(--color-blue); color: var(--color-white);
-    }
-    .toggle-switch { position: fixed; top: 1em; right: 1em; }
-    table {
-      width: 100%; border-collapse: collapse; margin-top: 1em;
-      background-color: rgba(0,0,0,0.2);
-    }
-    .light-mode table { background-color: var(--color-white); }
-    th, td {
-      border: 1px solid var(--color-yellow); padding: 0.5em; text-align: right;
-    }
-    th {
-      background-color: var(--color-blue); color: var(--color-white);
-    }
-    .light-mode th {
-      background-color: var(--color-red); color: var(--color-white);
-    }
-    tr.stoploss-step {
-      background-color: var(--color-yellow); color: var(--color-gray-dark);
-      font-weight: bold;
-    }
-    .stats {
-      margin-top: 1em; padding: 1em;
-      border: 2px solid var(--color-yellow); border-radius: 4px;
-      background-color: rgba(0,0,0,0.2);
-    }
-    .light-mode .stats { background-color: var(--color-white); }
-    .stats div { margin: 0.5em 0; }
+    html, body { margin:0; padding:0; background:var(--bg-dark); color:var(--text-dark); font-family:'Segoe UI',sans-serif; transition:0.3s; }
+    .light-mode html, .light-mode body { background:var(--bg-light); color:var(--text-light); }
+    .container { max-width:900px; margin:2em auto; padding:1em; }
+    h1 { text-align:center; color:var(--primary); margin-bottom:1em; }
+    label { display:block; margin:0.75em 0 0.25em; }
+    input { width:100%; padding:0.5em; font-size:1em; margin-bottom:0.5em; border:1px solid var(--border); border-radius:4px; background:transparent; color:inherit; transition:0.3s; }
+    .light-mode input { background:#fff; color:var(--text-light); }
+    .toggle-switch { position:fixed; top:1em; right:1em; }
+    table { width:100%; border-collapse:collapse; margin-top:1em; }
+    th, td { border:1px solid var(--border); padding:0.5em; text-align:right; }
+    th { background:var(--header-dark); color:#fff; }
+    .light-mode th { background:var(--header-light); }
+    tr.stoploss-step { background:var(--secondary); color:#fff; font-weight:bold; }
+    .stats { margin-top:1em; padding:1em; border:1px solid var(--border); border-radius:4px; }
+    .light-mode .stats { background:#fff; }
+    .stats div { margin:0.5em 0; }
   </style>
 </head>
 <body>
-  <div class="toggle-switch">
-    <button id="themeToggle">Toggle Light/Dark</button>
-  </div>
+  <div class="toggle-switch"><button id="themeToggle">Toggle Light/Dark</button></div>
   <div class="container">
     <h1>Martingale Sequence Calculator</h1>
-    <label>Base Bet ($):<input type="number" id="baseBet" value="1.00" step="0.01" min="0"></label>
-    <label>Payout Multiplier:<input type="number" id="payoutMultiplier" placeholder="e.g. 2.00" step="0.01" min="1"></label>
-    <label>Bet Increase Percentage (%):<input type="number" id="betIncreasePct" placeholder="e.g. 100 for double" step="0.1" min="0"></label>
-    <label>Stop Loss ($):<input type="number" id="stopLossLimit" placeholder="Amount to stop before next bet" step="0.01" min="0"></label>
-    <label>Number of Steps:<input type="number" id="numberOfSteps" placeholder="Or fixed steps instead of stop loss" step="1" min="1"></label>
-    <label>Spins per Minute:<input type="number" id="spinsPerMinute" value="90" step="1" min="1"></label>
-    <button id="generateBtn">Generate Sequence</button>
+    <label>Base Bet ($): <input id="baseBet" type="number" value="1.00" step="0.01" min="0"></label>
+    <label>Payout Multiplier: <input id="payoutMultiplier" type="number" placeholder="e.g. 2.00" step="0.01" min="1"></label>
+    <label>Bet Increase (%): <input id="betIncreasePct" type="number" placeholder="auto-updates" step="0.1" min="0"></label>
+    <label>Stop Loss ($): <input id="stopLossLimit" type="number" placeholder="stop before next bet" step="0.01" min="0"></label>
+    <label>Number of Steps: <input id="numberOfSteps" type="number" placeholder="leave blank for stop-loss" step="1" min="1"></label>
+    <label>Spins per Minute: <input id="spinsPerMinute" type="number" value="90" step="1" min="1"></label>
     <div id="results"></div>
   </div>
   <script>
-    // Theme toggle
-    const toggleBtn = document.getElementById('themeToggle');
-    toggleBtn.addEventListener('click', () => document.documentElement.classList.toggle('light-mode'));
+    const ids = ['baseBet','payoutMultiplier','betIncreasePct','stopLossLimit','numberOfSteps','spinsPerMinute'];
+    const el = id => document.getElementById(id);
+    const toNum = id => { const v = parseFloat(el(id).value); return isNaN(v) ? null : v; };
 
-    // Helpers
-    function toNum(id) { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? null : v; }
-    function syncMultiplierIncrease() {
-      const m = toNum('payoutMultiplier'), i = toNum('betIncreasePct');
-      if (m != null && i == null) document.getElementById('betIncreasePct').value = ((m - 1) * 100).toFixed(2);
-      else if (i != null && m == null) document.getElementById('payoutMultiplier').value = (1 + i / 100).toFixed(4);
+    function updateBetIncrease() {
+      const m = toNum('payoutMultiplier');
+      if (m > 1) el('betIncreasePct').value = (100/(m-1)).toFixed(2);
     }
+
     function computeSteps(base, incPct, stop) {
-      let cum = 0, bet = base, count = 0, factor = 1 + incPct / 100;
-      while (cum + bet <= stop) { cum += bet; bet *= factor; count++; if (count > 10000) break; }
+      let cum = 0, bet = base, count = 0;
+      const factor = 1 + incPct/100;
+      while (cum + bet <= stop) {
+        cum += bet;
+        bet *= factor;
+        count++;
+        if (count > 10000) break;
+      }
       return count;
     }
-    function seqProb(winProb, steps) { return Math.pow(1 - winProb, steps); }
-    function medianSpins(p_seq) { return Math.log(0.5) / Math.log(1 - p_seq); }
 
-    document.getElementById('payoutMultiplier').addEventListener('blur', syncMultiplierIncrease);
-    document.getElementById('betIncreasePct').addEventListener('blur', syncMultiplierIncrease);
+    const seqProb = (wp, steps) => Math.pow(1 - wp, steps);
+    const medianSpins = p => Math.log(0.5) / Math.log(1 - p);
+    function formatFull(n) { if (!isFinite(n)) return '∞'; return Math.floor(n).toString(); }
 
-    document.getElementById('generateBtn').addEventListener('click', () => {
-      // Inputs
+    function updateAll() {
       const base = toNum('baseBet') || 0;
-      syncMultiplierIncrease();
       const mult = toNum('payoutMultiplier') || 0;
       const incPct = toNum('betIncreasePct') || 0;
-      const stopLimit = toNum('stopLossLimit');
+      const stopLim = toNum('stopLossLimit');
       const stepInput = toNum('numberOfSteps');
-      const spinsPerMin = toNum('spinsPerMinute') || 0;
+      const spins = toNum('spinsPerMinute') || 0;
 
-      // Compute available and chosen steps
-      const availableSteps = computeSteps(base, incPct, stopLimit);
-      const stopLossStep = availableSteps + 1;
-      let stepsToShow;
-      if (stepInput == null) {
-        stepsToShow = stopLossStep;
-        document.getElementById('numberOfSteps').value = stepsToShow;
-      } else {
-        stepsToShow = stepInput;
+      const hasStop = stopLim != null;
+      const hasSteps = stepInput != null;
+      const available = hasStop ? computeSteps(base, incPct, stopLim) : null;
+      const highlight = hasStop ? available : null;
+
+      let showSteps = 0;
+      if (hasSteps) showSteps = stepInput;
+      else if (hasStop) showSteps = available + 1;
+
+      // Stats
+      const winProb = mult > 0 ? 1/mult : 0;
+      let stats = '<div class="stats">';
+      if (highlight != null) {
+        const p = seqProb(winProb, highlight);
+        stats += `<div><strong>Chance of ${highlight} losses:</strong> ${(p*100).toFixed(4)}% (<em>1 in ${formatFull(1/p)}</em>)</div>`;
+        stats += `<div><strong>Median time to hit:</strong> ${(spins>0 ? (medianSpins(p)/spins).toFixed(2) : '0')} minutes</div>`;
+      }
+      const earnPerSpin = base * (mult - 1) * winProb;
+      stats += `<div><strong>Est. Earnings/hr:</strong> $${(earnPerSpin * spins * 60).toFixed(2)}</div></div>`;
+
+      let html = stats;
+      if (showSteps > 0) {
+        html += '<table><thead><tr><th>Step</th><th>Bet</th><th>Total Wagered</th><th>Payout</th><th>Profit</th></tr></thead><tbody>';
+        let cum = 0;
+        let bet = base;
+        const factor = 1 + incPct/100;
+        for (let i = 1; i <= showSteps; i++) {
+          let betCell = '', cumCell = '', payoutCell = '', profitCell = '';
+          if (i <= available || hasSteps) {
+            cum += bet;
+            const payout = bet * mult;
+            const profit = payout - cum;
+            betCell = bet.toFixed(4);
+            cumCell = cum.toFixed(4);
+            payoutCell = payout.toFixed(4);
+            profitCell = profit.toFixed(4);
+          }
+          else if (!hasSteps && hasStop && i === available + 1) {
+            betCell = bet.toFixed(4);
+          }
+          const cls = (i === highlight) ? ' class="stoploss-step"' : '';
+          html += `<tr${cls}><td>${i}</td><td>${betCell}</td><td>${cumCell}</td><td>${payoutCell}</td><td>${profitCell}</td></tr>`;
+          bet *= factor;
+        }
+        html += '</tbody></table>';
       }
 
-      // Stats block
-      const winProb = mult > 0 ? 1 / mult : 0;
-      const p_seq = seqProb(winProb, stopLossStep);
-      const oneInX = p_seq > 0 ? 1 / p_seq : Infinity;
-      const medSpins = medianSpins(p_seq);
-      const medMins = spinsPerMin > 0 ? medSpins / spinsPerMin : 0;
-      let html = '<div class="stats">' +
-        `<div><strong>Chance of ${stopLossStep} losses in a row:</strong> ${(p_seq * 100).toFixed(4)}% (<em>1 in ${oneInX.toFixed(0)}</em>)</div>` +
-        `<div><strong>Median time to hit:</strong> ${medMins.toFixed(2)} minutes</div>` +
-      '</div>';
+      el('results').innerHTML = html;
+    }
 
-      // Table of bet sequence
-      html += '<table><thead><tr><th>Step</th><th>Bet</th><th>Total Wagered</th><th>Payout</th><th>Profit</th></tr></thead><tbody>';
-      let cum = 0, bet = base, factor = 1 + incPct / 100;
-      for (let i = 1; i <= stepsToShow; i++) {
-        cum += bet;
-        const payout = bet * mult;
-        const profit = payout - cum;
-        const isStop = (i === stopLossStep);
-        const rowClass = isStop ? ' class="stoploss-step"' : '';
-        html += `<tr${rowClass}><td>${i}</td><td>${bet.toFixed(4)}</td><td>${cum.toFixed(4)}</td><td>${payout.toFixed(4)}</td><td>${profit.toFixed(4)}</td></tr>`;
-        bet *= factor;
-      }
-      html += '</tbody></table>';
-
-      document.getElementById('results').innerHTML = html;
+    ids.forEach(id => {
+      ['input','blur'].forEach(evt => {
+        el(id).addEventListener(evt, () => {
+          if (id === 'payoutMultiplier') updateBetIncrease();
+          updateAll();
+        });
+      });
     });
+
+    el('themeToggle').addEventListener('click', () => {
+      document.documentElement.classList.toggle('light-mode');
+      updateAll();
+    });
+
+    updateAll();
   </script>
 </body>
 </html>
